@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica — Admin</strong>
+        <div>
+            <a href="index.html">Prodavnica</a>
+            <a href="#" onclick="logout()">Odjavi se</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="msg"></div>
+
+        <!-- Forma za dodavanje/izmenu -->
+        <h2 style="margin-bottom:1rem;">Proizvodi</h2>
+        <div class="auth-card" style="max-width:100%; margin-bottom:2rem;">
+            <form id="productForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label>Naziv</label>
+                    <input type="text" id="pName" required>
+                </div>
+                <div class="form-group">
+                    <label>Opis</label>
+                    <input type="text" id="pDesc">
+                </div>
+                <div class="form-group">
+                    <label>Cena (€)</label>
+                    <input type="number" id="pPrice" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Zaliha</label>
+                    <input type="number" id="pStock" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Kategorija</label>
+                    <input type="text" id="pCat">
+                </div>
+                <button type="submit" class="btn" id="submitBtn">Dodaj proizvod</button>
+            </form>
+        </div>
+
+        <!-- Tabela proizvoda -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Naziv</th><th>Cena</th><th>Zaliha</th><th>Kategorija</th><th>Akcije</th>
+                </tr>
+            </thead>
+            <tbody id="productsTable"></tbody>
+        </table>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        async function loadProducts() {
+            const products = await apiFetch('products.php');
+            const tbody = document.getElementById('productsTable');
+            tbody.innerHTML = '';
+            products.forEach(p => {
+                tbody.innerHTML += `<tr>
+                    <td>${p.id}</td>
+                    <td>${p.name}</td>
+                    <td>${p.price} €</td>
+                    <td>${p.stock}</td>
+                    <td>${p.category || '-'}</td>
+                    <td>
+                        <button class="btn" onclick="editProduct(${p.id})">Izmeni</button>
+                        <button class="btn btn-danger" onclick="deleteProduct(${p.id})">Obriši</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function editProduct(id) {
+            const products = JSON.parse(localStorage.getItem('products_cache') || '[]');
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('editId').value = p.id;
+            document.getElementById('pName').value = p.name;
+            document.getElementById('pDesc').value = p.description || '';
+            document.getElementById('pPrice').value = p.price;
+            document.getElementById('pStock').value = p.stock;
+            document.getElementById('pCat').value = p.category || '';
+            document.getElementById('submitBtn').textContent = 'Sачuvaj izmene';
+        }
+
+        async function deleteProduct(id) {
+            if (!confirm('Obriši ovaj proizvod?')) return;
+            await apiFetch('products.php', { method: 'DELETE', body: { id } });
+            loadProducts();
+        }
+
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editId').value;
+            const body = {
+                name: document.getElementById('pName').value,
+                description: document.getElementById('pDesc').value,
+                price: parseFloat(document.getElementById('pPrice').value),
+                stock: parseInt(document.getElementById('pStock').value),
+                category: document.getElementById('pCat').value
+            };
+
+            const data = editId
+                ? await apiFetch('products.php', { method: 'PUT', body: { ...body, id: parseInt(editId) } })
+                : await apiFetch('products.php', { method: 'POST', body });
+
+            const msg = document.getElementById('msg');
+            if (data.success) {
+                msg.innerHTML = '<div class="msg msg-success">Uspešno sačuvano!</div>';
+                document.getElementById('productForm').reset();
+                document.getElementById('editId').value = '';
+                document.getElementById('submitBtn').textContent = 'Dodaj proizvod';
+                loadProducts();
+            } else {
+                const errors = data.errors || [data.error];
+                msg.innerHTML = `<div class="msg msg-error">${errors.join('<br>')}</div>`;
+            }
+            setTimeout(() => msg.innerHTML = '', 3000);
+        });
+
+        // Provera da li je admin
+        (function() {
+            if (!isLoggedIn()) { window.location.href = 'login.html'; return; }
+            const user = decodeToken(localStorage.getItem('token'));
+            if (user.role !== 'admin') { window.location.href = 'index.html'; return; }
+            loadProducts();
+            // Cache za edit
+            apiFetch('products.php').then(p => localStorage.setItem('products_cache', JSON.stringify(p)));
+        })();
+    </script>
+</body>
+</html>   

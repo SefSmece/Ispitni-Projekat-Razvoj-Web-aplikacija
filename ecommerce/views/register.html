@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registracija | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica</strong>
+        <div>
+            <a href="login.html">Login</a>
+            <a href="register.html">Registracija</a>
+        </div>
+    </nav>
+
+    <div class="auth-card">
+        <h1>Registracija</h1>
+        <div id="msg"></div>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required minlength="3" maxlength="50">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Lozinka</label>
+                <input type="password" id="password" name="password" required minlength="6">
+            </div>
+            <button type="submit" class="btn">Registruj se</button>
+        </form>
+        <p style="margin-top:1rem; font-size:0.9rem;">
+            Već imaš nalog? <a href="login.html">Prijavi se</a>
+        </p>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('msg');
+            msg.innerHTML = '';
+
+            const data = await apiFetch('auth.php', {
+                method: 'POST',
+                body: {
+                    action: 'register',
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                }
+            });
+
+            if (data.success) {
+                msg.innerHTML = `<div class="msg msg-success">${data.message}</div>`;
+                setTimeout(() => window.location.href = 'login.html', 1500);
+            } else {
+                const errors = data.errors || [data.error];
+                msg.innerHTML = `<div class="msg msg-error">${errors.join('<br>')}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>   

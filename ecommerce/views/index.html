@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prodavnica | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica</strong>
+        <div id="navLinks"></div>
+    </nav>
+
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Pretraži proizvode...">
+            <button class="btn" onclick="loadProducts()">Pretraži</button>
+        </div>
+
+        <div id="msg"></div>
+        <div class="products-grid" id="productsGrid"></div>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+        }   
+        // Navigacija
+        function renderNav() {
+            const nav = document.getElementById('navLinks');
+            if (isLoggedIn()) {
+                const user = decodeToken(localStorage.getItem('token'));
+                let links = `<a href="cart.html">Korpa</a> <a href="orders.html">Porudžbine</a> <span style="margin-right:1rem;">${user.username} (${user.role})</span>`;   
+                if (user.role === 'admin') links += `<a href="admin.html">Admin</a>`;
+                links += `<a href="#" onclick="logout()">Odjavi se</a>`;
+                nav.innerHTML = links;
+            } else {
+                nav.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Registracija</a>`;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        // Učitaj proizvode
+        async function loadProducts() {
+            const search = document.getElementById('searchInput').value;
+            const url = search ? `products.php?search=${encodeURIComponent(search)}` : 'products.php';
+            const products = await apiFetch(url);
+
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+
+            if (!products.length) {
+                grid.innerHTML = '<p>Nema proizvoda.</p>';
+                return;
+            }
+
+            products.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                card.innerHTML = `
+                    <h3>${escapeHtml(p.name)}</h3>
+                    <p>${escapeHtml(p.description || '')}</p>
+                    <p class="price">${p.price} €</p>
+                    <p class="stock">Zaliha: ${p.stock} | Kategorija: ${escapeHtml(p.category || 'Opšte')}</p>
+                    <div class="actions">
+                        <button class="btn btn-success" onclick="addToCart(${p.id})">Dodaj u korpu</button>
+                    </div>
+                `;   
+                grid.appendChild(card);
+            });
+        }
+
+        // Dodaj u korpu
+        async function addToCart(productId) {
+            const msg = document.getElementById('msg');
+            const data = await apiFetch('cart.php', {
+                method: 'POST',
+                body: { product_id: productId, quantity: 1 }
+            });
+            if (data.success) {
+                msg.innerHTML = '<div class="msg msg-success">Dodato u korpu!</div>';
+            } else {
+                msg.innerHTML = `<div class="msg msg-error">${data.error}</div>`;
+            }
+            setTimeout(() => msg.innerHTML = '', 2000);
+        }
+
+        // Init
+        renderNav();
+        if (isLoggedIn()) {
+            loadProducts();
+        } else {
+            document.getElementById('msg').innerHTML = '<div class="msg msg-error">Morate biti prijavljeni za pregled proizvoda.</div>';
+        }
+    </script>
+</body>
+</html>   

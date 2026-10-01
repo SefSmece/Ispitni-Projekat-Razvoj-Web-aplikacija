@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Korpa | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica</strong>
+        <div>
+            <a href="index.html">Prodavnica</a>
+            <a href="cart.html">Korpa</a>
+            <a href="#" onclick="logout()">Odjavi se</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 style="margin-bottom:1rem;">Korpa</h2>
+        <div id="msg"></div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Proizvod</th>
+                    <th>Cena</th>
+                    <th>Količina</th>
+                    <th>Ukupno</th>
+                    <th>Akcije</th>
+                </tr>
+            </thead>
+            <tbody id="cartTable"></tbody>
+        </table>
+
+        <div style="margin-top:1.5rem; text-align:right;">
+            <p style="font-size:1.2rem; font-weight:700; margin-bottom:1rem;">
+                Ukupno: <span id="cartTotal">0.00</span> €
+            </p>
+            <button class="btn btn-success" onclick="checkout()">Kupi</button>
+        </div>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        async function loadCart() {
+            const items = await apiFetch('cart.php');
+            const tbody = document.getElementById('cartTable');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="5">Korpa je prazna.</td></tr>';
+            }
+
+            items.forEach(item => {
+                const lineTotal = item.price * item.quantity;
+                total += lineTotal;
+                tbody.innerHTML += `<tr>
+                    <td>${item.name}</td>
+                    <td>${item.price} €</td>
+                    <td class="cart-qty">
+                        <input type="number" min="1" max="${item.stock}" value="${item.quantity}"
+                               onchange="updateQty(${item.id}, this.value)">
+                    </td>
+                    <td>${lineTotal.toFixed(2)} €</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="removeFromCart(${item.id})">Ukloni</button>
+                    </td>
+                </tr>`;
+            });
+
+            document.getElementById('cartTotal').textContent = total.toFixed(2);
+        }
+
+        async function updateQty(cartId, qty) {
+            await apiFetch('cart.php', {
+                method: 'PUT',
+                body: { cart_id: cartId, quantity: parseInt(qty) }
+            });
+            loadCart();
+        }
+
+        async function removeFromCart(cartId) {
+            await apiFetch('cart.php', {
+                method: 'DELETE',
+                body: { cart_id: cartId }
+            });
+            loadCart();
+        }
+
+        async function checkout() {
+            const msg = document.getElementById('msg');
+            const data = await apiFetch('orders.php', { method: 'POST' });
+
+            if (data.success) {
+                msg.innerHTML = `<div class="msg msg-success">Porudžbina #${data.order_id} je uspešno kreirana! Ukupno: ${data.total.toFixed(2)} €</div>`;
+                loadCart();
+            } else {
+                msg.innerHTML = `<div class="msg msg-error">${data.error}</div>`;
+            }
+        }
+
+        // Provera login
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        } else {
+            loadCart();
+        }
+    </script>
+</body>
+</html>   

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica</strong>
+        <div>
+            <a href="login.html">Login</a>
+            <a href="register.html">Registracija</a>
+        </div>
+    </nav>
+
+    <div class="auth-card">
+        <h1>Prijava</h1>
+        <div id="msg"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Lozinka</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn">Prijavi se</button>
+        </form>
+        <p style="margin-top:1rem; font-size:0.9rem;">
+            Nemaš nalog? <a href="register.html">Registruj se</a>
+        </p>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('msg');
+            msg.innerHTML = '';
+
+            const data = await apiFetch('auth.php', {
+                method: 'POST',
+                body: {
+                    action: 'login',
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                }
+            });
+
+            if (data.success) {
+                localStorage.setItem('token', data.token);
+                window.location.href = 'index.html';
+            } else {
+                msg.innerHTML = `<div class="msg msg-error">${data.error || data.errors?.join(', ')}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>   

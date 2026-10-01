@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Porudžbine | Digitalna Prodavnica</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+    <nav>
+        <strong>Digitalna Prodavnica</strong>
+        <div>
+            <a href="index.html">Prodavnica</a>
+            <a href="cart.html">Korpa</a>
+            <a href="orders.html">Porudžbine</a>
+            <a href="#" onclick="logout()">Odjavi se</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 style="margin-bottom:1rem;">Moje porudžbine</h2>
+        <div id="msg"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Datum</th>
+                    <th>Ukupno</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTable"></tbody>
+        </table>
+    </div>
+
+    <script src="../assets/js/api.js"></script>
+    <script>
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function loadOrders() {
+            const orders = await apiFetch('orders.php');
+            const tbody = document.getElementById('ordersTable');
+            tbody.innerHTML = '';
+
+            if (!orders.length) {
+                tbody.innerHTML = '<tr><td colspan="4">Nema porudžbina.</td></tr>';
+                return;
+            }
+
+            orders.forEach(o => {
+                const statusColors = { pending: '#f39c12', completed: '#27ae60', cancelled: '#c0392b' };
+                tbody.innerHTML += `<tr>
+                    <td>${o.id}</td>
+                    <td>${escapeHtml(o.created_at)}</td>
+                    <td>${parseFloat(o.total).toFixed(2)} €</td>
+                    <td style="color:${statusColors[o.status] || '#333'}; font-weight:600;">${escapeHtml(o.status)}</td>
+                </tr>`;
+            });
+        }
+
+        if (!isLoggedIn()) {
+            window.location.href = 'login.html';
+        } else {
+            loadOrders();
+        }
+    </script>
+</body>
+</html>   
